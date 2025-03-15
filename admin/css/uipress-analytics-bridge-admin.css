@@ -1,0 +1,119 @@
+/**
+ * Admin styles for UIPress Analytics Bridge
+ */
+
+.uip-analytics-bridge-admin {
+    max-width: 800px;
+    margin: 20px 0;
+}
+
+.uip-analytics-bridge-header {
+    background: #fff;
+    padding: 20px;
+    border-radius: 5px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    margin-bottom: 20px;
+}
+
+.uip-analytics-bridge-header h1 {
+    margin-top: 0;
+}
+
+.uip-analytics-bridge-section {
+    background: #fff;
+    padding: 20px;
+    border-radius: 5px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    margin-bottom: 20px;
+}
+
+.uip-analytics-bridge-section h2 {
+    margin-top: 0;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #eee;
+}
+
+.uip-analytics-bridge-status {
+    margin: 15px 0;
+    padding: 15px;
+    border-radius: 4px;
+}
+
+.uip-analytics-bridge-status.success {
+    background: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.uip-analytics-bridge-status.warning {
+    background: #fff3cd;
+    color: #856404;
+    border: 1px solid #ffeeba;
+}
+
+.uip-analytics-bridge-status.error {
+    background: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+.uip-analytics-bridge-status.info {
+    background: #d1ecf1;
+    color: #0c5460;
+    border: 1px solid #bee5eb;
+}
+
+.uip-analytics-bridge-button {
+    display: inline-block;
+    background: #2271b1;
+    border: none;
+    color: white;
+    padding: 10px 15px;
+    border-radius: 3px;
+    cursor: pointer;
+    text-decoration: none;
+    font-size: 14px;
+    line-height: 1;
+    font-weight: 500;
+}
+
+.uip-analytics-bridge-button:hover,
+.uip-analytics-bridge-button:focus {
+    background: #135e96;
+    color: white;
+}
+
+.uip-analytics-bridge-button.secondary {
+    background: #f0f0f1;
+    color: #2c3338;
+    border: 1px solid #2c3338;
+}
+
+.uip-analytics-bridge-button.secondary:hover,
+.uip-analytics-bridge-button.secondary:focus {
+    background: #f6f7f7;
+    color: #2c3338;
+}
+
+.uip-analytics-bridge-form-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.uip-analytics-bridge-form-table th {
+    text-align: left;
+    padding: 15px 10px 15px 0;
+    width: 200px;
+    vertical-align: top;
+}
+
+.uip-analytics-bridge-form-table td {
+    padding: 15px 0;
+    vertical-align: top;
+}
+
+.uip-analytics-bridge-form-table .description {
+    font-style: italic;
+    color: #666;
+    margin-top: 5px;
+} 
