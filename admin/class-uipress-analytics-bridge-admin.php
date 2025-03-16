@@ -56,33 +56,147 @@ class UIPress_Analytics_Bridge_Admin {
     /**
      * Register the JavaScript for the admin area.
      *
-     * @return void
+     * @since    1.0.0
      */
     public function enqueue_scripts() {
-        // Make sure jquery is a dependency
-        wp_enqueue_script(
-            'uipress-analytics-bridge-admin',
-            UIPRESS_ANALYTICS_BRIDGE_PLUGIN_URL . 'admin/js/uipress-analytics-bridge-admin.js',
-            array('jquery', 'wp-i18n'),
-            UIPRESS_ANALYTICS_BRIDGE_VERSION,
-            true  // Changed to load in footer for better performance
-        );
+        $screen = get_current_screen();
         
-        // Localize script with plugin data and translations
-        wp_localize_script('uipress-analytics-bridge-admin', 'uipAnalyticsBridge', array(
-            'ajaxUrl' => admin_url('admin-ajax.php'),
-            'nonce' => wp_create_nonce('uipress-analytics-bridge-nonce'),
-            'connecting' => __('Connecting...', 'uipress-analytics-bridge'),
-            'testing' => __('Testing Connection...', 'uipress-analytics-bridge'),
-            'revoking' => __('Revoking...', 'uipress-analytics-bridge'),
-            'loading' => __('Loading...', 'uipress-analytics-bridge'),
-            'dismiss' => __('Dismiss this notice', 'uipress-analytics-bridge'),
-            'confirmRevoke' => __('Are you sure you want to revoke access to Google Analytics? This will disconnect UIPress from your analytics data.', 'uipress-analytics-bridge'),
-            'popupBlocked' => __('Your browser has blocked the authentication popup. Please allow popups for this site and try again.', 'uipress-analytics-bridge'),
-            'errorRevoke' => __('Could not revoke authentication.', 'uipress-analytics-bridge'),
-            'errorTest' => __('Could not connect to Google Analytics.', 'uipress-analytics-bridge'),
-            'errorAjax' => __('An error occurred while processing your request.', 'uipress-analytics-bridge')
-        ));
+        // Only load on UIPress admin pages or our plugin pages
+        if ((isset($screen->id) && strpos($screen->id, 'uipress') !== false) || 
+            (isset($_GET['page']) && strpos($_GET['page'], 'uipress-analytics-bridge') !== false)) {
+            
+            wp_enqueue_script(
+                'uipress-analytics-bridge-admin',
+                plugin_dir_url(__FILE__) . 'js/uipress-analytics-bridge-admin.js',
+                array('jquery'),
+                UIPRESS_ANALYTICS_BRIDGE_VERSION,
+                false
+            );
+            
+            // Add localization for the script
+            wp_localize_script(
+                'uipress-analytics-bridge-admin',
+                'uip_analytics_bridge',
+                array(
+                    'ajax_url' => admin_url('admin-ajax.php'),
+                    'security_nonce' => wp_create_nonce('uipress-lite-security-nonce'),
+                )
+            );
+            
+            // Add our auth override script
+            $this->inject_auth_override_script();
+        }
+    }
+    
+    /**
+     * Inject a script to override UIPress authentication check
+     * 
+     * @since    1.0.0
+     * @return void
+     */
+    private function inject_auth_override_script() {
+        // Get our authentication status
+        $auth = new UIPress_Analytics_Bridge_Auth();
+        $ga_data = $auth->get_analytics_data();
+        
+        // Get the callback URL for our OAuth flow
+        $callback_url = admin_url('admin.php?page=uipress-analytics-bridge-auth');
+        
+        // Get our API credentials
+        $api_credentials = get_option('uip_analytics_bridge_google_api', array());
+        $measurement_id = !empty($api_credentials['measurement_id']) ? $api_credentials['measurement_id'] : '';
+        
+        // Only inject if we have valid authentication or credentials
+        if (is_array($ga_data) || !empty($measurement_id)) {
+            $script = "
+            <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                // Override UIPress Google Analytics authentication check
+                function patchUipGoogleAnalytics() {
+                    if (window.uip && window.uip.appData && window.uip.appData.options) {
+                        // Force Google Analytics to be recognized as connected
+                        if (!window.uip.appData.options.google_analytics) {
+                            window.uip.appData.options.google_analytics = " . json_encode(is_array($ga_data) ? $ga_data : array()) . ";
+                            window.uip.appData.options.google_analytics.connected = true;
+                            window.uip.appData.options.google_analytics.oauth = true;
+                            " . (!empty($measurement_id) ? "window.uip.appData.options.google_analytics.measurement_id = '{$measurement_id}';" : "") . "
+                            console.log('UIPress Analytics Bridge: Injected Google Analytics authentication');
+                        }
+                    } else {
+                        // Try again in 100ms if UIPress is not loaded yet
+                        setTimeout(patchUipGoogleAnalytics, 100);
+                    }
+                }
+                
+                // Replace the 'Switch account' functionality
+                function replaceSwitchAccountButton() {
+                    // Find all 'Switch account' buttons or links
+                    const switchButtons = Array.from(document.querySelectorAll('.uip-link, .uip-button')).filter(el => {
+                        return el.textContent.trim().toLowerCase().includes('switch account');
+                    });
+                    
+                    if (switchButtons.length > 0) {
+                        switchButtons.forEach(button => {
+                            // Change the button text to make it clear this uses our plugin
+                            button.textContent = '" . __('Switch with Analytics Bridge', 'uipress-analytics-bridge') . "';
+                            
+                            // Remove old click handlers by cloning and replacing the element
+                            const newButton = button.cloneNode(true);
+                            button.parentNode.replaceChild(newButton, button);
+                            
+                            // Add our click handler
+                            newButton.addEventListener('click', function(e) {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                
+                                // Open our auth flow instead
+                                window.open('" . esc_js($callback_url) . "', 'uip_analytics_auth', 'width=600,height=700');
+                                
+                                // Force the parent menu/dropdown to close if exists
+                                const dropdowns = document.querySelectorAll('.uip-dropdown-content');
+                                dropdowns.forEach(dropdown => {
+                                    if (dropdown.contains(newButton)) {
+                                        // Try to find close button or click outside to close
+                                        const closeButtons = dropdown.querySelectorAll('.uip-link-muted');
+                                        closeButtons.forEach(closeBtn => closeBtn.click());
+                                    }
+                                });
+                            });
+                        });
+                        
+                        console.log('UIPress Analytics Bridge: Replaced switch account buttons: ' + switchButtons.length);
+                    }
+                    
+                    // Keep watching for new buttons that might be dynamically added
+                    setTimeout(replaceSwitchAccountButton, 2000);
+                }
+                
+                // Also hook into any AJAX calls to check authentication status
+                if (typeof jQuery !== 'undefined') {
+                    jQuery(document).ajaxSend(function(event, xhr, settings) {
+                        if (settings.data && typeof settings.data === 'string') {
+                            // Intercept Google Auth check
+                            if (settings.data.indexOf('action=uip_google_auth_check') !== -1) {
+                                console.log('UIPress Analytics Bridge: Intercepting Google auth check');
+                            }
+                            // Intercept build query
+                            else if (settings.data.indexOf('action=uip_build_google_analytics_query') !== -1) {
+                                console.log('UIPress Analytics Bridge: Intercepting Google query build');
+                            }
+                        }
+                    });
+                }
+                
+                // Start patching after a short delay to ensure UIPress has loaded
+                setTimeout(patchUipGoogleAnalytics, 500);
+                setTimeout(replaceSwitchAccountButton, 1000);
+            });
+            </script>
+            ";
+            
+            // Output the script directly
+            echo $script;
+        }
     }
 
     /**
@@ -295,68 +409,77 @@ class UIPress_Analytics_Bridge_Admin {
     }
 
     /**
-     * Display admin notices.
-     *
+     * Display admin notices about the plugin status
+     * 
+     * @since 1.0.0
      * @return void
      */
     public function display_admin_notices() {
-        // Only show notices on our settings page
-        $screen = get_current_screen();
-        if (!isset($screen->id) || $screen->id !== 'settings_page_uipress-analytics-bridge') {
+        // Only show notices to administrators and on relevant screens
+        if (!current_user_can('manage_options')) {
             return;
         }
         
-        // Check if UIPress Pro is detected
-        if (!$this->detector->is_uipress_pro_active()) {
-            $this->render_notice(
-                'error',
-                __('UIPress Analytics Bridge requires UIPress Pro to be installed and activated.', 'uipress-analytics-bridge'),
-                'uipress-not-detected'
-            );
-        } else {
-            // Check if UIPress Pro has Google Analytics functionality
-            if (!$this->detector->has_analytics_functionality()) {
-                $this->render_notice(
-                    'warning',
-                    __('UIPress Analytics Bridge detected UIPress Pro, but could not find Google Analytics functionality.', 'uipress-analytics-bridge'),
-                    'analytics-not-detected'
-                );
+        // Check if we're on a UIPress dashboard page with Google Analytics components
+        $screen = get_current_screen();
+        $is_uipress_dashboard = isset($screen->id) && (
+            $screen->id === 'admin_page_uip-admin-dashboard' || 
+            $screen->id === 'uipress_page_uip-admin-dashboard' ||
+            (isset($_GET['page']) && $_GET['page'] === 'uip-admin-dashboard')
+        );
+        
+        if ($is_uipress_dashboard) {
+            // Check if we have valid authentication but UIPress Pro doesn't recognize it
+            $auth = new UIPress_Analytics_Bridge_Auth();
+            $ga_data = $auth->get_analytics_data();
+            
+            // Only show notice if we have valid authentication
+            if (is_array($ga_data) && isset($ga_data['view']) && isset($ga_data['code'])) {
+                // Add a button to force synchronization
+                echo '<div class="notice notice-info is-dismissible uip-analytics-bridge-notice">';
+                echo '<p><strong>' . __('UIPress Analytics Bridge is properly configured', 'uipress-analytics-bridge') . '</strong></p>';
+                echo '<p>' . __('If Google Analytics components still show "Sign in with Google", please refresh this page or try the button below.', 'uipress-analytics-bridge') . '</p>';
+                echo '<p><button id="uip-analytics-bridge-sync" class="button button-primary">' . __('Force Sync with UIPress', 'uipress-analytics-bridge') . '</button></p>';
+                echo '</div>';
+                
+                // Add the script to handle the button click
+                echo '<script>
+                jQuery(document).ready(function($) {
+                    $("#uip-analytics-bridge-sync").on("click", function(e) {
+                        e.preventDefault();
+                        $(this).prop("disabled", true).text("' . __('Syncing...', 'uipress-analytics-bridge') . '");
+                        
+                        // Force reload the UIPress app data
+                        if (window.uip && window.uip.appData && window.uip.appData.options) {
+                            window.uip.appData.options.google_analytics = ' . json_encode($ga_data) . ';
+                            window.uip.appData.options.google_analytics.connected = true;
+                            
+                            // Notify user
+                            alert("' . __('Authentication data synchronized. Please reload any Google Analytics blocks or refresh the page.', 'uipress-analytics-bridge') . '");
+                            $(this).prop("disabled", false).text("' . __('Force Sync with UIPress', 'uipress-analytics-bridge') . '");
+                        } else {
+                            alert("' . __('UIPress not detected. Please refresh the page and try again.', 'uipress-analytics-bridge') . '");
+                            $(this).prop("disabled", false).text("' . __('Force Sync with UIPress', 'uipress-analytics-bridge') . '");
+                        }
+                    });
+                });
+                </script>';
             }
         }
         
-        // Display auth success message if applicable
-        if (isset($_GET['auth']) && $_GET['auth'] === 'success') {
-            $this->render_notice(
-                'success',
-                __('Successfully authenticated with Google Analytics!', 'uipress-analytics-bridge'),
-                'auth-success'
-            );
+        // Display other notices from the plugin settings
+        $notices = get_transient('uipress_analytics_bridge_admin_notices');
+        if ($notices && is_array($notices)) {
+            foreach ($notices as $notice) {
+                if (isset($notice['message']) && isset($notice['type'])) {
+                    echo '<div class="notice notice-' . esc_attr($notice['type']) . ' is-dismissible">';
+                    echo '<p>' . wp_kses_post($notice['message']) . '</p>';
+                    echo '</div>';
+                }
+            }
+            // Clear the notices after displaying them
+            delete_transient('uipress_analytics_bridge_admin_notices');
         }
-        
-        // Display notice about credentials changed if applicable
-        if (get_transient('uip_analytics_bridge_credentials_changed')) {
-            $this->render_notice(
-                'warning',
-                __('Your API credentials have changed. You will need to re-authenticate with Google Analytics.', 'uipress-analytics-bridge'),
-                'credentials-changed'
-            );
-            delete_transient('uip_analytics_bridge_credentials_changed');
-        }
-    }
-
-    /**
-     * Render an admin notice.
-     *
-     * @param string $type    The notice type (success, error, warning, info)
-     * @param string $message The message to display
-     * @param string $id      The notice ID for dismissible notices
-     * @return void
-     */
-    private function render_notice($type, $message, $id = '') {
-        $class = 'notice notice-' . $type . ' is-dismissible';
-        $id_attr = !empty($id) ? ' id="uip-analytics-bridge-notice-' . esc_attr($id) . '"' : '';
-        
-        printf('<div class="%1$s"%2$s><p>%3$s</p></div>', esc_attr($class), $id_attr, esc_html($message));
     }
 
     /**

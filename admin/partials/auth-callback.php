@@ -6,73 +6,115 @@
  */
 ?>
 
-<div class="wrap uip-analytics-bridge-admin">
-    <div class="uip-analytics-bridge-header">
-        <h1><span class="dashicons dashicons-google"></span> <?php _e('Google Analytics Authentication', 'uipress-analytics-bridge'); ?></h1>
-    </div>
-    
-    <div class="uip-analytics-bridge-section">
-        <h2><?php _e('Authentication Process', 'uipress-analytics-bridge'); ?></h2>
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title><?php _e('Google Analytics Authentication', 'uipress-analytics-bridge'); ?></title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+            background-color: #f8f9fa;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+            line-height: 1.5;
+        }
+        .container {
+            max-width: 500px;
+            margin: 40px auto;
+            padding: 30px;
+            background-color: #fff;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            border-radius: 4px;
+        }
+        h1 {
+            color: #2c3e50;
+            margin-top: 0;
+            margin-bottom: 20px;
+            font-size: 24px;
+        }
+        p {
+            margin-bottom: 20px;
+            font-size: 15px;
+        }
+        .btn {
+            display: inline-block;
+            background-color: #4285f4;
+            color: #fff;
+            padding: 10px 20px;
+            border-radius: 4px;
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 16px;
+            border: none;
+            cursor: pointer;
+            text-align: center;
+        }
+        .btn:hover {
+            background-color: #3367d6;
+        }
+        .btn-google {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 12px 24px;
+        }
+        .btn-google img {
+            margin-right: 10px;
+            width: 18px;
+            height: 18px;
+        }
+        .info {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f1f8e9;
+            border-left: 4px solid #8bc34a;
+            border-radius: 2px;
+        }
+        .note {
+            font-size: 13px;
+            color: #666;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1><?php _e('Connect to Google Analytics', 'uipress-analytics-bridge'); ?></h1>
         
-        <div style="text-align: center; padding: 30px 20px; max-width: 600px; margin: 0 auto;">
-            <img src="<?php echo UIPRESS_ANALYTICS_BRIDGE_PLUGIN_URL . 'admin/images/google-auth.png'; ?>" alt="Google Authentication" style="max-width: 250px; margin-bottom: 30px;">
-            
-            <div class="uip-analytics-bridge-status info">
-                <p><?php _e('You will be redirected to Google to authenticate with your Google Analytics account.', 'uipress-analytics-bridge'); ?></p>
-            </div>
-            
-            <p style="margin-top: 20px;"><?php _e('Please authorize access to your Google Analytics account to enable the integration with UIPress Pro.', 'uipress-analytics-bridge'); ?></p>
-            
-            <div style="margin: 30px 0;">
-                <div class="uip-analytics-bridge-loader" style="display: inline-block; border: 4px solid #f3f3f3; border-top: 4px solid #2271b1; border-radius: 50%; width: 30px; height: 30px; animation: uip-analytics-spin 2s linear infinite;"></div>
-                <p><?php _e('Redirecting to Google...', 'uipress-analytics-bridge'); ?></p>
-            </div>
-            
-            <p><?php _e('If you are not redirected automatically, please click the button below:', 'uipress-analytics-bridge'); ?></p>
-            
-            <p>
-                <a href="<?php echo esc_url($api_auth->get_authorization_url()); ?>" class="uip-analytics-bridge-google-button" style="padding: 10px 20px; font-size: 16px;">
-                    <img src="<?php echo UIPRESS_ANALYTICS_BRIDGE_PLUGIN_URL . 'admin/images/google-logo.svg'; ?>" alt="Google" width="20" height="20">
-                    <?php _e('Sign in with Google', 'uipress-analytics-bridge'); ?>
-                </a>
-            </p>
-            
-            <style>
-                @keyframes uip-analytics-spin {
-                    0% { transform: rotate(0deg); }
-                    100% { transform: rotate(360deg); }
-                }
-            </style>
-        </div>
-    </div>
-    
-    <div class="uip-analytics-bridge-section">
-        <h2><?php _e('What happens next?', 'uipress-analytics-bridge'); ?></h2>
-        
-        <ol style="margin-left: 20px; line-height: 1.8;">
-            <li><?php _e('You\'ll be redirected to Google\'s authentication page.', 'uipress-analytics-bridge'); ?></li>
-            <li><?php _e('Sign in with your Google account that has access to Google Analytics.', 'uipress-analytics-bridge'); ?></li>
-            <li><?php _e('Grant permission to access your Analytics data.', 'uipress-analytics-bridge'); ?></li>
-            <li><?php _e('You\'ll be returned to your WordPress site automatically.', 'uipress-analytics-bridge'); ?></li>
-            <li><?php _e('The connection will be established with UIPress Pro.', 'uipress-analytics-bridge'); ?></li>
-        </ol>
-        
-        <div class="uip-analytics-bridge-status info" style="margin-top: 20px;">
-            <p><?php _e('Note: Your analytics data never leaves your site. This plugin only establishes a secure connection between WordPress and Google Analytics.', 'uipress-analytics-bridge'); ?></p>
-        </div>
-    </div>
-    
-    <p style="text-align: center; margin-top: 20px;">
-        <a href="<?php echo esc_url(admin_url('options-general.php?page=uipress-analytics-bridge')); ?>" class="button button-secondary">
-            <span class="dashicons dashicons-arrow-left-alt" style="margin-top: 3px;"></span>
-            <?php _e('Back to Settings', 'uipress-analytics-bridge'); ?>
-        </a>
-    </p>
-</div>
+        <p><?php _e('UIPress Analytics Bridge needs your permission to access your Google Analytics data. Click the button below to connect your account.', 'uipress-analytics-bridge'); ?></p>
 
-<script>
-// Redirect to Google Auth URL after a short delay
-setTimeout(function() {
-    window.location.href = "<?php echo esc_url($api_auth->get_authorization_url()); ?>";
-}, 2000);
-</script>
+        <p><?php _e('You will be redirected to Google\'s authentication page where you can select which Google account to use.', 'uipress-analytics-bridge'); ?></p>
+        
+        <div class="info">
+            <p><strong><?php _e('Important', 'uipress-analytics-bridge'); ?>:</strong> <?php _e('After authorizing, make sure to select your Google Analytics account, property and view to link with UIPress.', 'uipress-analytics-bridge'); ?></p>
+        </div>
+
+        <?php 
+        // Generate the auth URL
+        $auth_url = $api_auth->generate_auth_url();
+        ?>
+        
+        <p style="text-align: center; margin-top: 30px;">
+            <a href="<?php echo esc_url($auth_url); ?>" class="btn btn-google">
+                <img src="<?php echo UIPRESS_ANALYTICS_BRIDGE_PLUGIN_URL; ?>admin/images/google-logo.svg" alt="Google">
+                <?php _e('Sign in with Google', 'uipress-analytics-bridge'); ?>
+            </a>
+        </p>
+        
+        <p class="note"><?php _e('Note: UIPress Analytics Bridge only requests read-only access to your Google Analytics data.', 'uipress-analytics-bridge'); ?></p>
+    </div>
+
+    <script>
+        // Auto-click the auth button for a better user experience
+        document.addEventListener('DOMContentLoaded', function() {
+            // Give the user time to read the instructions first
+            setTimeout(function() {
+                document.querySelector('.btn-google').click();
+            }, 500);
+        });
+    </script>
+</body>
+</html>

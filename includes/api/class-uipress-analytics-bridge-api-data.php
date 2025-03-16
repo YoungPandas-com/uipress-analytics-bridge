@@ -28,15 +28,29 @@ class UIPress_Analytics_Bridge_API_Data {
      * Initialize the class.
      */
     public function __construct() {
-        $this->api_auth = new UIPress_Analytics_Bridge_API_Auth();
+        // No direct WordPress function calls here to avoid loading issues
     }
 
     /**
-     * Test the connection to Google Analytics.
+     * Load settings from WordPress options - call this only when needed
+     */
+    private function load_settings() {
+        // Load cache settings
+        $advanced_settings = get_option('uip_analytics_bridge_advanced', array());
+        $this->cache_expiration = isset($advanced_settings['cache_expiration']) ? intval($advanced_settings['cache_expiration']) : 3600;
+    }
+
+    /**
+     * Test the connection to Google Analytics API.
      * 
-     * @return true|WP_Error True if successful, WP_Error on failure
+     * @return bool|WP_Error True on success, WP_Error on failure
      */
     public function test_connection() {
+        // Initialize API Auth only when needed
+        if (!isset($this->api_auth)) {
+            $this->api_auth = new UIPress_Analytics_Bridge_API_Auth();
+        }
+        
         // Get access token
         $access_token = $this->api_auth->get_access_token();
         if (is_wp_error($access_token)) {
@@ -86,13 +100,18 @@ class UIPress_Analytics_Bridge_API_Data {
     }
 
     /**
-     * Fetch analytics data.
+     * Fetch analytics data from Google API.
      * 
-     * @param array $analytics_data Account data
-     * @param array $params Additional parameters
+     * @param array $analytics_data The analytics account data
+     * @param array $params Additional parameters for the request
      * @return array|WP_Error Analytics data or error
      */
     public function fetch_analytics_data($analytics_data, $params = array()) {
+        // Initialize API Auth only when needed
+        if (!isset($this->api_auth)) {
+            $this->api_auth = new UIPress_Analytics_Bridge_API_Auth();
+        }
+        
         // Check if we have required data
         if (!isset($analytics_data['view']) && !isset($analytics_data['measurement_id'])) {
             return new WP_Error('missing_property', __('Google Analytics property ID is missing', 'uipress-analytics-bridge'));
@@ -334,163 +353,141 @@ class UIPress_Analytics_Bridge_API_Data {
     }
 
     /**
-     * Process the API response into a format compatible with UIPress.
-     * 
-     * @param array $response The API response
-     * @param int   $days     Number of days in the report
-     * @return array Processed data
+     * Process the API response and format it for UIPress.
+     *
+     * @param array $response The response data from Google Analytics API
+     * @param int $days Number of days in the date range
+     * @return array Formatted data for UIPress
      */
-    private function process_api_response($response, $days) {
-        $processed_data = array(
+    private function process_api_response($response, $days = 30) {
+        // Initialize the data structure expected by UIPress
+        $formatted_data = array(
             'success' => true,
-            'dates' => array(),
-            'users' => array(),
-            'pageviews' => array(),
-            'sessions' => array(),
-            'engagement' => array(),
-            'totals' => array(
+            'message' => __('Data retrieved successfully', 'uipress-analytics-bridge'),
+            'data' => array(),
+            'gafour' => true, // Indicate GA4 compatibility
+            'totalStats' => array(
                 'users' => 0,
                 'pageviews' => 0,
                 'sessions' => 0,
-                'engagement' => 0,
-                'newUsers' => 0,
-                'totalUsers' => 0
+                'bounce' => 0,
+                'change' => array(
+                    'users' => 0,
+                    'pageviews' => 0,
+                    'sessions' => 0,
+                    'bounce' => 0
+                )
             ),
-            'previous' => array(
-                'users' => 0,
-                'pageviews' => 0,
-                'sessions' => 0,
-                'engagement' => 0,
-                'newUsers' => 0,
-                'totalUsers' => 0
-            ),
-            'comparison' => array(
-                'users' => 0,
-                'pageviews' => 0,
-                'sessions' => 0,
-                'engagement' => 0,
-                'newUsers' => 0,
-                'totalUsers' => 0
-            )
+            'connected' => true,
+            'processed_by' => 'uipress-analytics-bridge'
         );
         
-        // Initialize previous metrics counts to avoid division by zero
-        $previous_metrics_count = 1;
-        $current_metrics_count = 1;
-        
-        if (!isset($response['rows']) || empty($response['rows'])) {
-            return $processed_data;
-        }
-        
-        // Get metric columns
-        $metric_headers = array();
-        if (isset($response['metricHeaders']) && is_array($response['metricHeaders'])) {
-            foreach ($response['metricHeaders'] as $index => $header) {
-                $metric_headers[$index] = $header['name'];
-            }
-        }
-        
-        // Prepare data arrays
-        $current_data = array();
-        $previous_data = array();
-        
-        // Process rows from the API response
-        foreach ($response['rows'] as $row) {
-            // Skip if required data is missing
-            if (!isset($row['dimensionValues']) || !isset($row['metricValues'])) {
-                continue;
-            }
-            
-            $date = $row['dimensionValues'][0]['value']; // Format: YYYYMMDD
-            $formatted_date = substr($date, 0, 4) . '-' . substr($date, 4, 2) . '-' . substr($date, 6, 2);
-            
-            // Get metrics based on headers
-            $metrics = array();
-            foreach ($row['metricValues'] as $index => $value) {
-                if (isset($metric_headers[$index])) {
-                    $metrics[$metric_headers[$index]] = $value['value'];
+        // If we have reports data, process it
+        if (isset($response['reports']) && is_array($response['reports'])) {
+            foreach ($response['reports'] as $report) {
+                if (isset($report['data']['totals'][0]['values'])) {
+                    $total_values = $report['data']['totals'][0]['values'];
+                    
+                    // Set total stats
+                    if (count($total_values) >= 3) {
+                        $formatted_data['totalStats']['sessions'] = intval($total_values[0]);
+                        $formatted_data['totalStats']['users'] = intval($total_values[1]);
+                        $formatted_data['totalStats']['pageviews'] = intval($total_values[2]);
+                    }
+                    
+                    // Calculate bounce rate if available
+                    if (count($total_values) >= 4) {
+                        $formatted_data['totalStats']['bounce'] = round(floatval($total_values[3]) * 100, 2);
+                    }
+                }
+                
+                // Process time series data if available
+                if (isset($report['data']['rows']) && is_array($report['data']['rows'])) {
+                    $chart_data = array();
+                    
+                    foreach ($report['data']['rows'] as $row) {
+                        if (isset($row['dimensions'][0]) && isset($row['metrics'][0]['values'])) {
+                            $date = $row['dimensions'][0];
+                            $metrics = $row['metrics'][0]['values'];
+                            
+                            $data_point = array(
+                                'name' => $date,
+                                'value' => intval($metrics[1]), // Users by default
+                                'pageviews' => isset($metrics[2]) ? intval($metrics[2]) : 0,
+                                'sessions' => isset($metrics[0]) ? intval($metrics[0]) : 0
+                            );
+                            
+                            $chart_data[] = $data_point;
+                        }
+                    }
+                    
+                    // Sort data by date
+                    usort($chart_data, function($a, $b) {
+                        return strtotime($a['name']) - strtotime($b['name']);
+                    });
+                    
+                    $formatted_data['data'] = $chart_data;
                 }
             }
+        }
+        
+        // Ensure we have some default data for charts even if API doesn't return anything
+        if (empty($formatted_data['data'])) {
+            // Generate placeholder data for the last X days
+            $chart_data = array();
+            $end_date = strtotime(current_time('Y-m-d'));
             
-            // Determine if this is current or previous period
-            $period = isset($row['dateRange']) ? $row['dateRange'] : 'current';
+            for ($i = $days - 1; $i >= 0; $i--) {
+                $date = date('Y-m-d', strtotime("-{$i} days", $end_date));
+                
+                $chart_data[] = array(
+                    'name' => $date,
+                    'value' => 0,
+                    'pageviews' => 0,
+                    'sessions' => 0
+                );
+            }
             
-            // Add data to appropriate array
-            if ($period === 'previous') {
-                $previous_data[$formatted_date] = $metrics;
-            } else {
-                $current_data[$formatted_date] = $metrics;
+            $formatted_data['data'] = $chart_data;
+        }
+        
+        // Add change stats (percentage change from previous period)
+        if (isset($response['previous_period']) && is_array($response['previous_period'])) {
+            $prev_totals = isset($response['previous_period']['totals'][0]['values']) ? 
+                $response['previous_period']['totals'][0]['values'] : array(0, 0, 0, 0);
+            
+            // Calculate change percentages
+            if (count($prev_totals) >= 3) {
+                $prev_sessions = intval($prev_totals[0]);
+                $prev_users = intval($prev_totals[1]);
+                $prev_pageviews = intval($prev_totals[2]);
+                
+                $formatted_data['totalStats']['change']['sessions'] = $prev_sessions > 0 ? 
+                    round((($formatted_data['totalStats']['sessions'] - $prev_sessions) / $prev_sessions) * 100, 2) : 0;
+                    
+                $formatted_data['totalStats']['change']['users'] = $prev_users > 0 ? 
+                    round((($formatted_data['totalStats']['users'] - $prev_users) / $prev_users) * 100, 2) : 0;
+                    
+                $formatted_data['totalStats']['change']['pageviews'] = $prev_pageviews > 0 ? 
+                    round((($formatted_data['totalStats']['pageviews'] - $prev_pageviews) / $prev_pageviews) * 100, 2) : 0;
+            }
+            
+            // Add bounce rate change if available
+            if (count($prev_totals) >= 4) {
+                $prev_bounce = round(floatval($prev_totals[3]) * 100, 2);
+                $formatted_data['totalStats']['change']['bounce'] = $prev_bounce > 0 ? 
+                    round($formatted_data['totalStats']['bounce'] - $prev_bounce, 2) : 0;
             }
         }
         
-        // Set metrics count for averaging
-        $current_metrics_count = max(1, count($current_data));
-        $previous_metrics_count = max(1, count($previous_data));
-        
-        // Process current period data
-        foreach ($current_data as $date => $metrics) {
-            $processed_data['dates'][] = $date;
-            
-            // Process each metric
-            $users = isset($metrics['activeUsers']) ? intval($metrics['activeUsers']) : 0;
-            $pageviews = isset($metrics['screenPageViews']) ? intval($metrics['screenPageViews']) : 0;
-            $sessions = isset($metrics['sessions']) ? intval($metrics['sessions']) : 0;
-            $engagement = isset($metrics['engagementRate']) ? floatval($metrics['engagementRate']) * 100 : 0;
-            $newUsers = isset($metrics['newUsers']) ? intval($metrics['newUsers']) : 0;
-            $totalUsers = isset($metrics['totalUsers']) ? intval($metrics['totalUsers']) : 0;
-            
-            $processed_data['users'][] = $users;
-            $processed_data['pageviews'][] = $pageviews;
-            $processed_data['sessions'][] = $sessions;
-            $processed_data['engagement'][] = round($engagement, 2);
-            
-            // Add to totals
-            $processed_data['totals']['users'] += $users;
-            $processed_data['totals']['pageviews'] += $pageviews;
-            $processed_data['totals']['sessions'] += $sessions;
-            $processed_data['totals']['newUsers'] += $newUsers;
-            $processed_data['totals']['totalUsers'] += $totalUsers;
-            $processed_data['totals']['engagement'] += $engagement;
+        // Add analytics data for authentication check
+        $auth = new UIPress_Analytics_Bridge_Auth();
+        $auth_data = $auth->get_analytics_data();
+        if (is_array($auth_data)) {
+            $formatted_data['google_account'] = $auth_data;
         }
         
-        // Calculate average engagement for current period
-        $processed_data['totals']['engagement'] = round($processed_data['totals']['engagement'] / $current_metrics_count, 2);
-        
-        // Process previous period data for totals
-        foreach ($previous_data as $date => $metrics) {
-            // Process each metric for previous period
-            $users = isset($metrics['activeUsers']) ? intval($metrics['activeUsers']) : 0;
-            $pageviews = isset($metrics['screenPageViews']) ? intval($metrics['screenPageViews']) : 0;
-            $sessions = isset($metrics['sessions']) ? intval($metrics['sessions']) : 0;
-            $engagement = isset($metrics['engagementRate']) ? floatval($metrics['engagementRate']) * 100 : 0;
-            $newUsers = isset($metrics['newUsers']) ? intval($metrics['newUsers']) : 0;
-            $totalUsers = isset($metrics['totalUsers']) ? intval($metrics['totalUsers']) : 0;
-            
-            // Add to previous totals
-            $processed_data['previous']['users'] += $users;
-            $processed_data['previous']['pageviews'] += $pageviews;
-            $processed_data['previous']['sessions'] += $sessions;
-            $processed_data['previous']['engagement'] += $engagement;
-            $processed_data['previous']['newUsers'] += $newUsers;
-            $processed_data['previous']['totalUsers'] += $totalUsers;
-        }
-        
-        // Calculate average engagement for previous period
-        $processed_data['previous']['engagement'] = round($processed_data['previous']['engagement'] / $previous_metrics_count, 2);
-        
-        // Calculate comparison percentages
-        $metrics_to_compare = array('users', 'pageviews', 'sessions', 'engagement', 'newUsers', 'totalUsers');
-        
-        foreach ($metrics_to_compare as $metric) {
-            if ($processed_data['previous'][$metric] > 0) {
-                $change = (($processed_data['totals'][$metric] - $processed_data['previous'][$metric]) / $processed_data['previous'][$metric]) * 100;
-                $processed_data['comparison'][$metric] = round($change, 2);
-            } else {
-                $processed_data['comparison'][$metric] = 0;
-            }
-        }
-        
-        return $processed_data;
+        return $formatted_data;
     }
 
     /**
@@ -602,15 +599,29 @@ class UIPress_Analytics_Bridge_API_Data {
      * @return string Sanitized property ID
      */
     private function sanitize_property_id($property_id) {
-        // Remove any non-alphanumeric characters except hyphen
-        $property_id = preg_replace('/[^a-zA-Z0-9\-]/', '', $property_id);
-        
-        // Handle GA4 format property IDs
-        if (strpos($property_id, 'G-') !== 0 && is_numeric($property_id)) {
+        // For GA4 properties (starting with G-), preserve as is
+        if (strpos($property_id, 'G-') === 0) {
             return $property_id;
         }
         
-        // Return as-is for property IDs with a prefix like G-XXXXXXXX
-        return $property_id;
+        // For Universal Analytics properties, they should be numeric
+        if (is_numeric($property_id)) {
+            return $property_id;
+        }
+        
+        // For other formats, do gentle sanitization
+        // Only remove truly problematic characters
+        $sanitized = preg_replace('/[^\w\-]/', '', $property_id);
+        
+        // Log if the ID was changed during sanitization
+        if ($sanitized !== $property_id && defined('WP_DEBUG') && WP_DEBUG) {
+            error_log(sprintf(
+                'UIPress Analytics Bridge: Property ID sanitized from "%s" to "%s"',
+                $property_id,
+                $sanitized
+            ));
+        }
+        
+        return $sanitized;
     }
 }

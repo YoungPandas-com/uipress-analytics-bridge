@@ -62,15 +62,22 @@ class UIPress_Analytics_Bridge_API_Auth {
      * Initialize the class.
      */
     public function __construct() {
+        // Set the redirect URI - NOT using get_option here to avoid early loading issues
+        $this->redirect_uri = admin_url('admin.php?page=uipress-analytics-bridge-auth');
+        
+        // Set default scopes - NOT using get_option during initial load
+        $this->scopes = $this->default_scopes;
+    }
+    
+    /**
+     * Load credentials from options - only call this method when WordPress is fully loaded
+     */
+    private function load_credentials() {
         // Get credentials from options
         $credentials = get_option('uip_analytics_bridge_google_api', array());
         
         $this->client_id = isset($credentials['client_id']) ? $credentials['client_id'] : '';
         $this->client_secret = isset($credentials['client_secret']) ? $credentials['client_secret'] : '';
-        $this->redirect_uri = admin_url('admin.php?page=uipress-analytics-bridge-auth');
-        
-        // Allow filtering of scopes
-        $this->scopes = apply_filters('uipress_analytics_bridge_api_scopes', $this->default_scopes);
     }
 
     /**
@@ -91,30 +98,64 @@ class UIPress_Analytics_Bridge_API_Auth {
     }
 
     /**
-     * Get OAuth authorization URL.
+     * Get credentials either from instance variables or from options
      * 
-     * @return string The authorization URL
+     * @return array Credentials array
      */
-    public function get_authorization_url() {
+    private function get_credentials() {
+        // If credentials aren't loaded yet, load them now
         if (empty($this->client_id)) {
-            return '';
+            $this->load_credentials();
         }
         
-        // Add state parameter for security
-        $state = wp_create_nonce('uipress_analytics_bridge_auth');
-        
-        $args = array(
-            'response_type' => 'code',
+        return array(
             'client_id' => $this->client_id,
-            'redirect_uri' => $this->redirect_uri,
-            'scope' => implode(' ', $this->scopes),
-            'access_type' => 'offline',
-            'prompt' => 'consent',
-            'state' => $state,
-            'include_granted_scopes' => 'true'
+            'client_secret' => $this->client_secret
+        );
+    }
+
+    /**
+     * Generate the authentication URL for Google.
+     *
+     * @return string Authentication URL
+     */
+    public function generate_auth_url() {
+        // Get credentials
+        $credentials = $this->get_credentials();
+        
+        if (empty($credentials['client_id'])) {
+            return admin_url('options-general.php?page=uipress-analytics-bridge&error=no_credentials');
+        }
+        
+        // Generate state parameter for security (includes current timestamp and a random string)
+        $state = base64_encode(json_encode(array(
+            'time' => time(),
+            'nonce' => wp_generate_password(12, false)
+        )));
+        
+        // Store state in session for verification
+        $this->set_transient_data('uip_analytics_bridge_auth_state', $state, 3600); // 1 hour expiration
+        
+        // Prepare the authentication URL with the right scopes and parameters
+        $auth_url = add_query_arg(
+            array(
+                'client_id' => $credentials['client_id'],
+                'redirect_uri' => admin_url('admin.php?page=uipress-analytics-bridge-auth'),
+                'response_type' => 'code',
+                'access_type' => 'offline',
+                'scope' => implode(' ', array(
+                    'https://www.googleapis.com/auth/analytics.readonly',
+                    'https://www.googleapis.com/auth/userinfo.profile',
+                    'https://www.googleapis.com/auth/userinfo.email'
+                )),
+                'state' => $state,
+                'prompt' => 'select_account consent',  // Force selection of account and consent
+                'include_granted_scopes' => 'true'
+            ),
+            self::GOOGLE_AUTH_URL
         );
         
-        return add_query_arg($args, self::GOOGLE_AUTH_URL);
+        return $auth_url;
     }
 
     /**
@@ -124,7 +165,10 @@ class UIPress_Analytics_Bridge_API_Auth {
      * @return array|WP_Error Token data or error
      */
     public function exchange_code_for_token($code) {
-        if (empty($this->client_id) || empty($this->client_secret)) {
+        // Load credentials if needed
+        $credentials = $this->get_credentials();
+        
+        if (empty($credentials['client_id']) || empty($credentials['client_secret'])) {
             return new WP_Error('missing_credentials', __('Client ID and Client Secret are required', 'uipress-analytics-bridge'));
         }
         
@@ -136,8 +180,8 @@ class UIPress_Analytics_Bridge_API_Auth {
         $args = array(
             'body' => array(
                 'code' => $code,
-                'client_id' => $this->client_id,
-                'client_secret' => $this->client_secret,
+                'client_id' => $credentials['client_id'],
+                'client_secret' => $credentials['client_secret'],
                 'redirect_uri' => $this->redirect_uri,
                 'grant_type' => 'authorization_code'
             ),
@@ -205,12 +249,25 @@ class UIPress_Analytics_Bridge_API_Auth {
     }
 
     /**
+     * Store data in a transient for later retrieval
+     * 
+     * @param string $key Transient key
+     * @param mixed $data Data to store
+     * @param int $expiration Expiration time in seconds
+     * @return bool Success or failure
+     */
+    private function set_transient_data($key, $data, $expiration = 3600) {
+        return set_transient($key, $data, $expiration);
+    }
+    
+    /**
      * Refresh access token using refresh token.
      * 
      * @return array|WP_Error New token data or error
      */
     public function refresh_access_token() {
         $token_data = $this->get_token_data();
+        $credentials = $this->get_credentials();
         
         if (empty($token_data) || empty($token_data['refresh_token'])) {
             return new WP_Error('missing_refresh_token', __('Refresh token is missing', 'uipress-analytics-bridge'));
@@ -218,8 +275,8 @@ class UIPress_Analytics_Bridge_API_Auth {
         
         $args = array(
             'body' => array(
-                'client_id' => $this->client_id,
-                'client_secret' => $this->client_secret,
+                'client_id' => $credentials['client_id'],
+                'client_secret' => $credentials['client_secret'],
                 'refresh_token' => $token_data['refresh_token'],
                 'grant_type' => 'refresh_token'
             )

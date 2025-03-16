@@ -162,32 +162,61 @@ class UIPress_Analytics_Bridge {
     private function intercept_uipress_hooks() {
         // Only setup interception if UIPress Pro is detected
         if ($this->detector->is_uipress_pro_active()) {
-            $auth = new UIPress_Analytics_Bridge_Auth();
-            $data = new UIPress_Analytics_Bridge_Data();
-            
-            // Get advanced settings
-            $advanced_settings = get_option('uip_analytics_bridge_advanced', array());
-            $override_method = isset($advanced_settings['override_method']) ? $advanced_settings['override_method'] : 'hook';
-            
-            // Always register the filter for maximum compatibility
-            $this->loader->add_filter('uip_filter_google_analytics_data', $data, 'format_analytics_data', 10, 1);
-            
-            // Based on settings, intercept hooks and/or use filters
-            if ($override_method === 'hook' || $override_method === 'both') {
-                // Intercept authentication hooks - use priority 9 to execute before UIPress Pro's handlers (default is 10)
-                $this->loader->add_action('wp_ajax_uip_build_google_analytics_query', $data, 'intercept_build_query', 9);
-                $this->loader->add_action('wp_ajax_uip_save_google_analytics', $auth, 'intercept_save_account', 9);
-                $this->loader->add_action('wp_ajax_uip_save_access_token', $auth, 'intercept_save_access_token', 9);
-                $this->loader->add_action('wp_ajax_uip_google_auth_check', $auth, 'intercept_auth_check', 9);
+            // Defer all hook registrations until WordPress is fully loaded
+            add_action('init', function() {
+                $auth = new UIPress_Analytics_Bridge_Auth();
+                $data = new UIPress_Analytics_Bridge_Data();
                 
-                // Log interception for diagnostics if debug mode is enabled
-                if (isset($advanced_settings['debug_mode']) && $advanced_settings['debug_mode']) {
-                    add_action('admin_init', function() {
+                // Get advanced settings
+                $advanced_settings = get_option('uip_analytics_bridge_advanced', array());
+                $override_method = isset($advanced_settings['override_method']) ? $advanced_settings['override_method'] : 'hook';
+                
+                // Always register the filter for maximum compatibility
+                $this->loader->add_filter('uip_filter_google_analytics_data', $data, 'format_analytics_data', 10, 1);
+                
+                // Based on settings, intercept hooks and/or use filters
+                if ($override_method === 'hook' || $override_method === 'both') {
+                    // Intercept authentication hooks - use priority 9 to execute before UIPress Pro's handlers (default is 10)
+                    $this->loader->add_action('wp_ajax_uip_build_google_analytics_query', $data, 'intercept_build_query', 9);
+                    $this->loader->add_action('wp_ajax_uip_save_google_analytics', $auth, 'intercept_save_account', 9);
+                    $this->loader->add_action('wp_ajax_uip_save_access_token', $auth, 'intercept_save_access_token', 9);
+                    $this->loader->add_action('wp_ajax_uip_google_auth_check', $auth, 'intercept_auth_check', 9);
+                    
+                    // Add hook to force UIPress to recognize our authentication
+                    add_filter('pre_option_uip_google_analytics_status', array($this, 'force_google_analytics_status'), 10, 1);
+                    
+                    // Log interception for diagnostics if debug mode is enabled
+                    if (isset($advanced_settings['debug_mode']) && $advanced_settings['debug_mode']) {
                         error_log('UIPress Analytics Bridge: Intercepting AJAX hooks with priority 9');
-                    });
+                    }
                 }
-            }
+            });
         }
+    }
+
+    /**
+     * Force UIPress to recognize our Google Analytics authentication status
+     *
+     * @param mixed $value The original option value
+     * @return bool Authentication status
+     */
+    public function force_google_analytics_status($value) {
+        // Only attempt to check auth status if WordPress is fully loaded
+        if (!did_action('init')) {
+            return $value;
+        }
+        
+        // Get auth instance only when needed
+        $auth = new UIPress_Analytics_Bridge_Auth();
+        $ga_data = $auth->get_analytics_data();
+        
+        // If we have valid authentication data, return true
+        if (is_array($ga_data) && isset($ga_data['view']) && isset($ga_data['code'])) {
+            return true;
+        }
+        
+        // Otherwise, return the original value
+        return $value;
     }
 
     /**

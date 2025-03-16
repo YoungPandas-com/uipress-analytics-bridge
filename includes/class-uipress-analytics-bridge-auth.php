@@ -17,7 +17,19 @@ class UIPress_Analytics_Bridge_Auth {
      * Initialize the class.
      */
     public function __construct() {
-        $this->api_auth = new UIPress_Analytics_Bridge_API_Auth();
+        // We'll initialize api_auth only when needed to avoid loading issues
+    }
+
+    /**
+     * Get the API auth instance.
+     *
+     * @return UIPress_Analytics_Bridge_API_Auth
+     */
+    private function get_api_auth() {
+        if (!isset($this->api_auth)) {
+            $this->api_auth = new UIPress_Analytics_Bridge_API_Auth();
+        }
+        return $this->api_auth;
     }
 
     /**
@@ -101,13 +113,22 @@ class UIPress_Analytics_Bridge_Auth {
             wp_send_json_error(__('Security check failed', 'uipress-analytics-bridge'));
         }
 
-        // Check authentication status via our method
-        $auth_status = $this->check_authentication_status();
+        // Get the saveAccountToUser flag
+        $save_to_user = isset($_POST['saveAccountToUser']) ? sanitize_text_field($_POST['saveAccountToUser']) : 'false';
+        
+        // Check authentication status
+        $ga_data = $this->get_analytics_data($save_to_user);
+        
+        // Verify we have required data
+        $is_authenticated = false;
+        if (is_array($ga_data) && isset($ga_data['view']) && isset($ga_data['code'])) {
+            $is_authenticated = true;
+        }
         
         // Format the response to match what UIPress Pro expects
         $response = array(
             'success' => true,
-            'status' => $auth_status
+            'status' => $is_authenticated
         );
         
         // Send the JSON response and exit
@@ -240,9 +261,12 @@ class UIPress_Analytics_Bridge_Auth {
             return;
         }
         
+        // Format the data to match UIPress Pro's format
+        $uipress_data = $this->format_uipress_compatible_data($data);
+        
         // Use UIPress method to update user preferences
         $uip_user_preferences = new UipressLite\Classes\App\UserPreferences();
-        $uip_user_preferences::update('google_analytics', $data);
+        $uip_user_preferences::update('google_analytics', $uipress_data);
     }
 
     /**
@@ -257,8 +281,57 @@ class UIPress_Analytics_Bridge_Auth {
             return;
         }
         
+        // Format the data to match UIPress Pro's format
+        $uipress_data = $this->format_uipress_compatible_data($data);
+        
         // Use UIPress method to update options
         $uip_options = new UipressLite\Classes\App\UipOptions();
-        $uip_options::update('google_analytics', $data);
+        $uip_options::update('google_analytics', $uipress_data);
+    }
+
+    /**
+     * Format data to be compatible with UIPress Pro
+     *
+     * @param array $data The data from our plugin
+     * @return array Data formatted for UIPress
+     */
+    private function format_uipress_compatible_data($data) {
+        // Create a copy to avoid modifying the original
+        $uipress_data = $data;
+        
+        // Ensure all required keys are present
+        $uipress_data['connected'] = true;
+        
+        // Get the API credentials for measurement ID if available
+        $api_credentials = get_option('uip_analytics_bridge_google_api', array());
+        if (!empty($api_credentials['measurement_id'])) {
+            $uipress_data['measurement_id'] = $api_credentials['measurement_id'];
+            
+            // If view isn't set but we have a measurement ID, use that as the view
+            if (empty($uipress_data['view'])) {
+                $uipress_data['view'] = $api_credentials['measurement_id'];
+            }
+        }
+        
+        // Add GA4 property ID if needed
+        if (!isset($uipress_data['property']) && isset($uipress_data['view'])) {
+            $uipress_data['property'] = $uipress_data['view'];
+        }
+        
+        // Add account ID if needed
+        if (!isset($uipress_data['account'])) {
+            $uipress_data['account'] = isset($uipress_data['code']) ? $uipress_data['code'] : '';
+        }
+        
+        // Ensure a few other fields UIPress may expect
+        $uipress_data['gafour'] = true;
+        
+        // Log the data if debugging is enabled
+        $advanced_settings = get_option('uip_analytics_bridge_advanced', array());
+        if (isset($advanced_settings['debug_mode']) && $advanced_settings['debug_mode']) {
+            error_log('UIPress Analytics Bridge: Formatted auth data - ' . json_encode($uipress_data));
+        }
+        
+        return $uipress_data;
     }
 } 
