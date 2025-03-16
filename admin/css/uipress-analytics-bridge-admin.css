@@ -2,102 +2,171 @@
  * Admin styles for UIPress Analytics Bridge
  */
 
-.uip-analytics-bridge-admin {
-    max-width: 800px;
+ .uip-analytics-bridge-admin {
+    max-width: 900px;
     margin: 20px 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
 }
 
 .uip-analytics-bridge-header {
     background: #fff;
-    padding: 20px;
-    border-radius: 5px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    padding: 25px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
     margin-bottom: 20px;
+    border-left: 4px solid #2271b1;
 }
 
 .uip-analytics-bridge-header h1 {
     margin-top: 0;
+    color: #1d2327;
+    font-weight: 500;
 }
 
 .uip-analytics-bridge-section {
     background: #fff;
-    padding: 20px;
-    border-radius: 5px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    padding: 25px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
     margin-bottom: 20px;
+    transition: all 0.2s ease;
+}
+
+.uip-analytics-bridge-section:hover {
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
 .uip-analytics-bridge-section h2 {
     margin-top: 0;
-    padding-bottom: 10px;
-    border-bottom: 1px solid #eee;
+    padding-bottom: 15px;
+    border-bottom: 1px solid #f0f0f1;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+}
+
+.uip-analytics-bridge-section h2 .dashicons {
+    margin-right: 8px;
+    color: #2271b1;
+}
+
+.uip-analytics-bridge-setup-steps {
+    counter-reset: step-counter;
+    margin: 25px 0;
+}
+
+.uip-analytics-bridge-step {
+    position: relative;
+    padding: 20px 20px 20px 70px;
+    margin-bottom: 15px;
+    background: #f9f9f9;
+    border-radius: 6px;
+    border-left: 3px solid #2271b1;
+}
+
+.uip-analytics-bridge-step:before {
+    content: counter(step-counter);
+    counter-increment: step-counter;
+    position: absolute;
+    left: 20px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 36px;
+    height: 36px;
+    background: #2271b1;
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-weight: bold;
+}
+
+.uip-analytics-bridge-step h3 {
+    margin-top: 0;
+    margin-bottom: 8px;
+}
+
+.uip-analytics-bridge-step p {
+    margin-top: 0;
+}
+
+.uip-analytics-bridge-step.completed {
+    border-left-color: #46b450;
+}
+
+.uip-analytics-bridge-step.completed:before {
+    background: #46b450;
+}
+
+.uip-analytics-bridge-step.active {
+    background: #f0f6fc;
 }
 
 .uip-analytics-bridge-status {
     margin: 15px 0;
-    padding: 15px;
-    border-radius: 4px;
+    padding: 15px 15px 15px 45px;
+    border-radius: 6px;
+    position: relative;
+}
+
+.uip-analytics-bridge-status:before {
+    font-family: dashicons;
+    position: absolute;
+    left: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 20px;
 }
 
 .uip-analytics-bridge-status.success {
-    background: #d4edda;
+    background: #f0fff1;
     color: #155724;
     border: 1px solid #c3e6cb;
 }
 
+.uip-analytics-bridge-status.success:before {
+    content: "\f147";
+    color: #46b450;
+}
+
 .uip-analytics-bridge-status.warning {
-    background: #fff3cd;
+    background: #fff9e6;
     color: #856404;
     border: 1px solid #ffeeba;
 }
 
+.uip-analytics-bridge-status.warning:before {
+    content: "\f534";
+    color: #f0b849;
+}
+
 .uip-analytics-bridge-status.error {
-    background: #f8d7da;
+    background: #fff0f0;
     color: #721c24;
     border: 1px solid #f5c6cb;
 }
 
+.uip-analytics-bridge-status.error:before {
+    content: "\f153";
+    color: #dc3232;
+}
+
 .uip-analytics-bridge-status.info {
-    background: #d1ecf1;
+    background: #f0f8ff;
     color: #0c5460;
     border: 1px solid #bee5eb;
 }
 
-.uip-analytics-bridge-button {
-    display: inline-block;
-    background: #2271b1;
-    border: none;
-    color: white;
-    padding: 10px 15px;
-    border-radius: 3px;
-    cursor: pointer;
-    text-decoration: none;
-    font-size: 14px;
-    line-height: 1;
-    font-weight: 500;
-}
-
-.uip-analytics-bridge-button:hover,
-.uip-analytics-bridge-button:focus {
-    background: #135e96;
-    color: white;
-}
-
-.uip-analytics-bridge-button.secondary {
-    background: #f0f0f1;
-    color: #2c3338;
-    border: 1px solid #2c3338;
-}
-
-.uip-analytics-bridge-button.secondary:hover,
-.uip-analytics-bridge-button.secondary:focus {
-    background: #f6f7f7;
-    color: #2c3338;
+.uip-analytics-bridge-status.info:before {
+    content: "\f348";
+    color: #2271b1;
 }
 
 .uip-analytics-bridge-form-table {
     width: 100%;
     border-collapse: collapse;
+    margin-bottom: 20px;
 }
 
 .uip-analytics-bridge-form-table th {
@@ -105,6 +174,7 @@
     padding: 15px 10px 15px 0;
     width: 200px;
     vertical-align: top;
+    font-weight: 500;
 }
 
 .uip-analytics-bridge-form-table td {
@@ -112,8 +182,329 @@
     vertical-align: top;
 }
 
+.uip-analytics-bridge-form-table input[type="text"],
+.uip-analytics-bridge-form-table input[type="password"] {
+    width: 100%;
+    max-width: 400px;
+    padding: 8px 12px;
+    border-radius: 4px;
+    border: 1px solid #ddd;
+}
+
+.uip-analytics-bridge-form-table input[type="text"]:focus,
+.uip-analytics-bridge-form-table input[type="password"]:focus {
+    border-color: #2271b1;
+    box-shadow: 0 0 0 1px #2271b1;
+    outline: none;
+}
+
 .uip-analytics-bridge-form-table .description {
-    font-style: italic;
+    font-style: normal;
     color: #666;
     margin-top: 5px;
-} 
+}
+
+.uip-analytics-bridge-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: #2271b1;
+    border: none;
+    color: white;
+    padding: 8px 16px;
+    height: auto;
+    min-height: 36px;
+    border-radius: 4px;
+    cursor: pointer;
+    text-decoration: none;
+    font-size: 14px;
+    line-height: 1.2;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    margin-right: 10px;
+}
+
+.uip-analytics-bridge-button .dashicons {
+    margin-right: 5px;
+}
+
+.uip-analytics-bridge-button:hover,
+.uip-analytics-bridge-button:focus {
+    background: #135e96;
+    color: white;
+    text-decoration: none;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.uip-analytics-bridge-button.secondary {
+    background: #f0f0f1;
+    color: #2c3338;
+    border: 1px solid #ddd;
+}
+
+.uip-analytics-bridge-button.secondary:hover,
+.uip-analytics-bridge-button.secondary:focus {
+    background: #f6f7f7;
+    color: #2c3338;
+    border-color: #999;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.uip-analytics-bridge-button.success {
+    background: #46b450;
+}
+
+.uip-analytics-bridge-button.success:hover,
+.uip-analytics-bridge-button.success:focus {
+    background: #389e41;
+}
+
+.uip-analytics-bridge-button.error {
+    background: #d63638;
+}
+
+.uip-analytics-bridge-button.error:hover,
+.uip-analytics-bridge-button.error:focus {
+    background: #b32d2e;
+}
+
+.uip-analytics-bridge-tooltip {
+    display: inline-block;
+    position: relative;
+    margin-left: 5px;
+}
+
+.uip-analytics-bridge-tooltip .dashicons {
+    color: #999;
+    cursor: pointer;
+}
+
+.uip-analytics-bridge-tooltip:hover .dashicons {
+    color: #2271b1;
+}
+
+.uip-analytics-bridge-tooltip .uip-analytics-bridge-tooltip-text {
+    visibility: hidden;
+    width: 250px;
+    background-color: #333;
+    color: #fff;
+    text-align: center;
+    border-radius: 6px;
+    padding: 8px 12px;
+    position: absolute;
+    z-index: 1;
+    bottom: 125%;
+    left: 50%;
+    transform: translateX(-50%);
+    opacity: 0;
+    transition: opacity 0.3s;
+    font-size: 12px;
+    line-height: 1.5;
+    font-weight: normal;
+}
+
+.uip-analytics-bridge-tooltip .uip-analytics-bridge-tooltip-text::after {
+    content: "";
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    margin-left: -5px;
+    border-width: 5px;
+    border-style: solid;
+    border-color: #333 transparent transparent transparent;
+}
+
+.uip-analytics-bridge-tooltip:hover .uip-analytics-bridge-tooltip-text {
+    visibility: visible;
+    opacity: 1;
+}
+
+.uip-analytics-bridge-auth-methods {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    margin: 20px 0;
+}
+
+.uip-analytics-bridge-auth-method {
+    flex: 1;
+    min-width: 300px;
+    padding: 20px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    background: #f9f9f9;
+    transition: all 0.2s ease;
+}
+
+.uip-analytics-bridge-auth-method:hover {
+    border-color: #2271b1;
+    background: #f0f6fc;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.uip-analytics-bridge-auth-method h3 {
+    margin-top: 0;
+    display: flex;
+    align-items: center;
+}
+
+.uip-analytics-bridge-auth-method h3 .dashicons {
+    margin-right: 8px;
+    color: #2271b1;
+}
+
+.uip-analytics-bridge-auth-method p {
+    margin-bottom: 20px;
+}
+
+.uip-analytics-bridge-google-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: #4285f4;
+    color: white;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    text-decoration: none;
+    font-size: 14px;
+    line-height: 1.2;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.uip-analytics-bridge-google-button img {
+    margin-right: 10px;
+    width: 18px;
+    height: 18px;
+}
+
+.uip-analytics-bridge-google-button:hover,
+.uip-analytics-bridge-google-button:focus {
+    background: #357ae8;
+    color: white;
+    text-decoration: none;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.uip-analytics-bridge-connection-details {
+    margin-top: 20px;
+    padding: 15px;
+    background: #f9f9f9;
+    border-radius: 6px;
+    border: 1px solid #ddd;
+}
+
+.uip-analytics-bridge-connection-details h4 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    font-weight: 500;
+}
+
+.uip-analytics-bridge-connection-details table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.uip-analytics-bridge-connection-details table th,
+.uip-analytics-bridge-connection-details table td {
+    padding: 8px;
+    text-align: left;
+    border-bottom: 1px solid #eee;
+}
+
+.uip-analytics-bridge-connection-details table th {
+    width: 30%;
+    font-weight: 500;
+}
+
+/* Progress indicator */
+.uip-analytics-bridge-progress {
+    display: flex;
+    justify-content: space-between;
+    margin: 30px 0;
+    position: relative;
+}
+
+.uip-analytics-bridge-progress:before {
+    content: '';
+    position: absolute;
+    top: 15px;
+    left: 30px;
+    right: 30px;
+    height: 2px;
+    background: #ddd;
+    z-index: 1;
+}
+
+.uip-analytics-bridge-progress-step {
+    position: relative;
+    z-index: 2;
+    text-align: center;
+    flex: 1;
+}
+
+.uip-analytics-bridge-progress-indicator {
+    width: 30px;
+    height: 30px;
+    background: #f0f0f1;
+    border-radius: 50%;
+    margin: 0 auto 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid #ddd;
+    color: #555;
+    font-weight: bold;
+}
+
+.uip-analytics-bridge-progress-step.completed .uip-analytics-bridge-progress-indicator {
+    background: #46b450;
+    border-color: #389e41;
+    color: white;
+}
+
+.uip-analytics-bridge-progress-step.active .uip-analytics-bridge-progress-indicator {
+    background: #2271b1;
+    border-color: #135e96;
+    color: white;
+}
+
+.uip-analytics-bridge-progress-label {
+    font-size: 13px;
+    line-height: 1.4;
+    color: #666;
+}
+
+.uip-analytics-bridge-progress-step.completed .uip-analytics-bridge-progress-label,
+.uip-analytics-bridge-progress-step.active .uip-analytics-bridge-progress-label {
+    color: #2c3338;
+    font-weight: 500;
+}
+
+/* Media Queries for Responsive Design */
+@media screen and (max-width: 782px) {
+    .uip-analytics-bridge-form-table {
+        display: block;
+    }
+    
+    .uip-analytics-bridge-form-table tbody,
+    .uip-analytics-bridge-form-table tr,
+    .uip-analytics-bridge-form-table th,
+    .uip-analytics-bridge-form-table td {
+        display: block;
+        width: 100%;
+    }
+    
+    .uip-analytics-bridge-form-table th {
+        padding-bottom: 5px;
+    }
+    
+    .uip-analytics-bridge-form-table td {
+        padding-top: 5px;
+    }
+    
+    .uip-analytics-bridge-progress-label {
+        font-size: 12px;
+    }
+}
