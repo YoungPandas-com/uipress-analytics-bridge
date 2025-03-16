@@ -17,12 +17,24 @@ class UIPress_Analytics_Bridge_Admin {
      * Initialize the class.
      */
     public function __construct() {
-        $this->detector = new UIPress_Analytics_Bridge_Detector();
+        // Initialize the detector after making sure it exists
+        if (class_exists('UIPress_Analytics_Bridge_Detector')) {
+            $this->detector = new UIPress_Analytics_Bridge_Detector();
+        } else {
+            // Handle the case where the detector class isn't available
+            $this->detector = null;
+            add_action('admin_notices', function() {
+                echo '<div class="notice notice-error"><p>UIPress Analytics Bridge: Required classes are missing. Please reinstall the plugin.</p></div>';
+            });
+        }
         
         // Register AJAX handlers
         add_action('wp_ajax_uip_analytics_bridge_revoke', array($this, 'ajax_revoke_token'));
         add_action('wp_ajax_uip_analytics_bridge_test_connection', array($this, 'ajax_test_connection'));
         add_action('wp_ajax_uip_analytics_bridge_get_properties', array($this, 'ajax_get_properties'));
+        
+        // Register settings
+        add_action('admin_init', array($this, 'register_settings'));
     }
 
     /**
@@ -31,10 +43,11 @@ class UIPress_Analytics_Bridge_Admin {
      * @return void
      */
     public function enqueue_styles() {
+        // Fixed: Removed dashicons dependency as it's not a registered stylesheet
         wp_enqueue_style(
             'uipress-analytics-bridge-admin',
             UIPRESS_ANALYTICS_BRIDGE_PLUGIN_URL . 'admin/css/uipress-analytics-bridge-admin.css',
-            array('dashicons'),
+            array(),
             UIPRESS_ANALYTICS_BRIDGE_VERSION,
             'all'
         );
@@ -46,12 +59,13 @@ class UIPress_Analytics_Bridge_Admin {
      * @return void
      */
     public function enqueue_scripts() {
+        // Make sure jquery is a dependency
         wp_enqueue_script(
             'uipress-analytics-bridge-admin',
             UIPRESS_ANALYTICS_BRIDGE_PLUGIN_URL . 'admin/js/uipress-analytics-bridge-admin.js',
-            array('jquery'),
+            array('jquery', 'wp-i18n'),
             UIPRESS_ANALYTICS_BRIDGE_VERSION,
-            false
+            true  // Changed to load in footer for better performance
         );
         
         // Localize script with plugin data and translations

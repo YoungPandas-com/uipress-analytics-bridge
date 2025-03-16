@@ -374,6 +374,10 @@ class UIPress_Analytics_Bridge_API_Data {
             )
         );
         
+        // Initialize previous metrics counts to avoid division by zero
+        $previous_metrics_count = 1;
+        $current_metrics_count = 1;
+        
         if (!isset($response['rows']) || empty($response['rows'])) {
             return $processed_data;
         }
@@ -419,6 +423,10 @@ class UIPress_Analytics_Bridge_API_Data {
             }
         }
         
+        // Set metrics count for averaging
+        $current_metrics_count = max(1, count($current_data));
+        $previous_metrics_count = max(1, count($previous_data));
+        
         // Process current period data
         foreach ($current_data as $date => $metrics) {
             $processed_data['dates'][] = $date;
@@ -442,12 +450,11 @@ class UIPress_Analytics_Bridge_API_Data {
             $processed_data['totals']['sessions'] += $sessions;
             $processed_data['totals']['newUsers'] += $newUsers;
             $processed_data['totals']['totalUsers'] += $totalUsers;
+            $processed_data['totals']['engagement'] += $engagement;
         }
         
-        // Calculate average engagement
-        $processed_data['totals']['engagement'] = count($processed_data['engagement']) > 0 
-            ? array_sum($processed_data['engagement']) / count($processed_data['engagement']) 
-            : 0;
+        // Calculate average engagement for current period
+        $processed_data['totals']['engagement'] = round($processed_data['totals']['engagement'] / $current_metrics_count, 2);
         
         // Process previous period data for totals
         foreach ($previous_data as $date => $metrics) {
@@ -469,9 +476,7 @@ class UIPress_Analytics_Bridge_API_Data {
         }
         
         // Calculate average engagement for previous period
-        $processed_data['previous']['engagement'] = count($previous_data) > 0 
-            ? $processed_data['previous']['engagement'] / count($previous_data) 
-            : 0;
+        $processed_data['previous']['engagement'] = round($processed_data['previous']['engagement'] / $previous_metrics_count, 2);
         
         // Calculate comparison percentages
         $metrics_to_compare = array('users', 'pageviews', 'sessions', 'engagement', 'newUsers', 'totalUsers');

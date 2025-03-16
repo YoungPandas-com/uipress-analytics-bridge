@@ -140,7 +140,8 @@ class UIPress_Analytics_Bridge_API_Auth {
                 'client_secret' => $this->client_secret,
                 'redirect_uri' => $this->redirect_uri,
                 'grant_type' => 'authorization_code'
-            )
+            ),
+            'timeout' => 15, // Increase timeout for slow API responses
         );
         
         $response = wp_remote_post(self::GOOGLE_TOKEN_URL, $args);
@@ -150,6 +151,10 @@ class UIPress_Analytics_Bridge_API_Auth {
         }
         
         $body = json_decode(wp_remote_retrieve_body($response), true);
+        
+        if (empty($body) || !is_array($body)) {
+            return new WP_Error('invalid_response', __('Invalid response from Google. Please try again.', 'uipress-analytics-bridge'));
+        }
         
         if (isset($body['error'])) {
             $error_description = isset($body['error_description']) ? $body['error_description'] : $body['error'];
@@ -328,6 +333,12 @@ class UIPress_Analytics_Bridge_API_Auth {
                 $result = $this->refresh_access_token();
                 
                 if (is_wp_error($result)) {
+                    // If we can't refresh, but still have an access token, return it anyway
+                    // It might still work if Google's validation is lenient
+                    if (!empty($token_data['access_token'])) {
+                        error_log('UIPress Analytics Bridge: Token refresh failed but returning existing token: ' . $result->get_error_message());
+                        return $token_data['access_token'];
+                    }
                     return $result;
                 }
                 

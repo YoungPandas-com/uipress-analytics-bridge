@@ -30,15 +30,17 @@ class UIPress_Analytics_Bridge {
      * @since 1.0.0
      */
     public function __construct() {
-        // Initialize detector
+        // Load dependencies first
+        $this->load_dependencies();
+        
+        // Initialize detector (now it's safe because the class has been loaded)
         $this->detector = new UIPress_Analytics_Bridge_Detector();
         
-        // Check dependencies before loading
+        // Check dependencies before proceeding further
         if (!$this->check_dependencies()) {
             return;
         }
         
-        $this->load_dependencies();
         $this->define_admin_hooks();
         $this->intercept_uipress_hooks();
         
@@ -108,11 +110,12 @@ class UIPress_Analytics_Bridge {
         // The class responsible for orchestrating the actions and filters of the core plugin
         require_once UIPRESS_ANALYTICS_BRIDGE_PLUGIN_DIR . 'includes/class-uipress-analytics-bridge-loader.php';
         
-        // The class responsible for defining all actions that occur in the admin area
-        require_once UIPRESS_ANALYTICS_BRIDGE_PLUGIN_DIR . 'admin/class-uipress-analytics-bridge-admin.php';
-        
         // The class responsible for UIPress Pro detection
         require_once UIPRESS_ANALYTICS_BRIDGE_PLUGIN_DIR . 'includes/class-uipress-analytics-bridge-detector.php';
+        
+        // API classes 
+        require_once UIPRESS_ANALYTICS_BRIDGE_PLUGIN_DIR . 'includes/api/class-uipress-analytics-bridge-api-auth.php';
+        require_once UIPRESS_ANALYTICS_BRIDGE_PLUGIN_DIR . 'includes/api/class-uipress-analytics-bridge-api-data.php';
         
         // The class responsible for Google Analytics authentication
         require_once UIPRESS_ANALYTICS_BRIDGE_PLUGIN_DIR . 'includes/class-uipress-analytics-bridge-auth.php';
@@ -120,9 +123,8 @@ class UIPress_Analytics_Bridge {
         // The class responsible for data retrieval and formatting
         require_once UIPRESS_ANALYTICS_BRIDGE_PLUGIN_DIR . 'includes/class-uipress-analytics-bridge-data.php';
         
-        // API classes 
-        require_once UIPRESS_ANALYTICS_BRIDGE_PLUGIN_DIR . 'includes/api/class-uipress-analytics-bridge-api-auth.php';
-        require_once UIPRESS_ANALYTICS_BRIDGE_PLUGIN_DIR . 'includes/api/class-uipress-analytics-bridge-api-data.php';
+        // The class responsible for defining all actions that occur in the admin area
+        require_once UIPRESS_ANALYTICS_BRIDGE_PLUGIN_DIR . 'admin/class-uipress-analytics-bridge-admin.php';
         
         $this->loader = new UIPress_Analytics_Bridge_Loader();
     }
